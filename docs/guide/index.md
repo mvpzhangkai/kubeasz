@@ -1,29 +1,22 @@
 ## 使用指南
 
-### 附加组件
+### 附加组件安装
 
 - 安装 [kubedns](kubedns.md)
 - 安装 [dashboard](dashboard.md)
-- 安装 [heapster](heapster.md)
-- 安装 ingress
-- 安装 efk
+- 安装 [metrics-server](metrics-server.md)
+- 安装 [prometheus](prometheus.md)
+- 安装 [heapster](heapster.md) DEPRECATED WARNNING
+- 安装 [ingress](ingress.md)
+- 安装 [helm](helm.md)
+- 安装 [efk](efk.md)
+- 安装 [harbor](harbor.md)
+- 安装 [metallb](metallb.md)
 
-### 集群维护
+### 基础特性演示
 
-- 集群状态检查
-- 集群扩容
-  - node 节点扩容
-  - master 节点扩容
-  - etcd 集群扩容
-- 清理集群
+- 自动水平伸缩 [Horizontal Pod Autoscaling](hpa.md)
+- 网络安全策略 [Network Policy](networkpolicy.md)
+- 滚动更新 [rollingupdate](rollingupdateWithZeroDowntime.md)
 
-### 应用实践
 
-- 官方入门教程
-- Django 应用部署
-- Java tomcat 应用部署
-- NFS StorageClass 动态存储卷实践
-
-### 其他
-
-- Harbor 部署

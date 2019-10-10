@@ -1,120 +1,139 @@
-##----------kubelet 配置部分--------------
-- name: 下载 kubelet和kube-proxy 二进制
+- name: 创建kube-node 相关目录
+  file: name={{ item }} state=directory
+  with_items:
+  - /var/lib/kubelet
+  - /var/lib/kube-proxy
+  - /etc/cni/net.d
+
+- name: 下载 kubelet,kube-proxy 二进制和基础 cni plugins
   copy: src={{ base_dir }}/bin/{{ item }} dest={{ bin_dir }}/{{ item }} mode=0755
   with_items:
+  - kubectl
   - kubelet
   - kube-proxy
+  - bridge
+  - host-local
+  - loopback
+  tags: upgrade_k8s
 
-# kubelet 启动时向 kube-apiserver 发送 TLS bootstrapping 请求，需要绑定该角色
-# 只需单节点执行一次，重复执行的报错可以忽略
-# 增加15s等待kube-apiserver正常工作
-- name: kubelet-bootstrap-setting
-  shell: "sleep 15 && {{ bin_dir }}/kubectl create clusterrolebinding kubelet-bootstrap \
-        --clusterrole=system:node-bootstrapper --user=kubelet-bootstrap"
-  when: NODE_ID is defined and NODE_ID == "node1"
-  ignore_errors: true
+# 每个 node 节点运行 haproxy 连接到多个 apiserver
+- import_tasks: node_lb.yml
+  when: "inventory_hostname not in groups['kube-master']"
 
-#创建bootstrap.kubeconfig配置文件
-- name: 设置集群参数
-  shell: "{{ bin_dir }}/kubectl config set-cluster kubernetes \
-        --certificate-authority={{ ca_dir }}/ca.pem \
-        --embed-certs=true \
-        --server={{ KUBE_APISERVER }} \
-        --kubeconfig=bootstrap.kubeconfig"
-- name: 设置客户端认证参数
-  shell: "{{ bin_dir }}/kubectl config set-credentials kubelet-bootstrap \
-        --token={{ BOOTSTRAP_TOKEN }} \
-        --kubeconfig=bootstrap.kubeconfig"
-- name: 设置上下文参数
-  shell: "{{ bin_dir }}/kubectl config set-context default \
-	--cluster=kubernetes \
-	--user=kubelet-bootstrap \
-	--kubeconfig=bootstrap.kubeconfig"
-- name: 选择默认上下文
-  shell: "{{ bin_dir }}/kubectl config use-context default --kubeconfig=bootstrap.kubeconfig"
+- name: 替换 kubeconfig 的 apiserver 地址
+  lineinfile:
+    dest: /root/.kube/config
+    regexp: "^    server"
+    line: "    server: {{ KUBE_APISERVER }}"
 
-- name: 安装bootstrap.kubeconfig配置文件
-  shell: "mv $HOME/bootstrap.kubeconfig /etc/kubernetes/bootstrap.kubeconfig"
+##----------kubelet 配置部分--------------
 
-- name: 创建kubelet的工作目录
-  file: name=/var/lib/kubelet state=directory
+- name: 准备kubelet 证书签名请求
+  template: src=kubelet-csr.json.j2 dest={{ ca_dir }}/kubelet-csr.json
 
-- name: 创建kubelet的systemd unit文件
-  template: src=kubelet.service.j2 dest=/etc/systemd/system/kubelet.service
-
-- name: 开启kubelet 服务
-  shell: systemctl daemon-reload && systemctl enable kubelet && systemctl restart kubelet
-
-- name: approve-kubelet-csr
-  shell: "sleep 15 && {{ bin_dir }}/kubectl get csr|grep 'Pending' | awk 'NR>0{print $1}'| xargs {{ bin_dir }}/kubectl certificate approve"
-  when: NODE_ID is defined and NODE_ID == "node1"
-  ignore_errors: true
-
-##-------kube-proxy部分----------------
-- name: 准备kube-proxy 证书签名请求
-  template: src=kube-proxy-csr.json.j2 dest={{ ca_dir }}/kube-proxy-csr.json
-
-- name: 创建 kube-proxy证书与私钥
+- name: 创建 kubelet 证书与私钥
   shell: "cd {{ ca_dir }} && {{ bin_dir }}/cfssl gencert \
         -ca={{ ca_dir }}/ca.pem \
         -ca-key={{ ca_dir }}/ca-key.pem \
         -config={{ ca_dir }}/ca-config.json \
-        -profile=kubernetes kube-proxy-csr.json | {{ bin_dir }}/cfssljson -bare kube-proxy"
+        -profile=kubernetes kubelet-csr.json | {{ bin_dir }}/cfssljson -bare kubelet"
 
-#创建kube-proxy.kubeconfig配置文件
+# 创建kubelet.kubeconfig 
 - name: 设置集群参数
   shell: "{{ bin_dir }}/kubectl config set-cluster kubernetes \
         --certificate-authority={{ ca_dir }}/ca.pem \
         --embed-certs=true \
         --server={{ KUBE_APISERVER }} \
-        --kubeconfig=kube-proxy.kubeconfig"
+	--kubeconfig=/etc/kubernetes/kubelet.kubeconfig"
+
 - name: 设置客户端认证参数
-  shell: "{{ bin_dir }}/kubectl config set-credentials kube-proxy \
-	--client-certificate={{ ca_dir }}/kube-proxy.pem \
-	--client-key={{ ca_dir }}/kube-proxy-key.pem \
+  shell: "{{ bin_dir }}/kubectl config set-credentials system:node:{{ inventory_hostname }} \
+        --client-certificate={{ ca_dir }}/kubelet.pem \
         --embed-certs=true \
-        --kubeconfig=kube-proxy.kubeconfig"
+        --client-key={{ ca_dir }}/kubelet-key.pem \
+	--kubeconfig=/etc/kubernetes/kubelet.kubeconfig"
+
 - name: 设置上下文参数
   shell: "{{ bin_dir }}/kubectl config set-context default \
         --cluster=kubernetes \
-        --user=kube-proxy \
-        --kubeconfig=kube-proxy.kubeconfig"
+	--user=system:node:{{ inventory_hostname }} \
+	--kubeconfig=/etc/kubernetes/kubelet.kubeconfig"
+
 - name: 选择默认上下文
-  shell: "{{ bin_dir }}/kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig"
+  shell: "{{ bin_dir }}/kubectl config use-context default \
+	--kubeconfig=/etc/kubernetes/kubelet.kubeconfig"
 
-- name: 安装kube-proxy.kubeconfig配置文件
-  shell: "mv $HOME/kube-proxy.kubeconfig /etc/kubernetes/kube-proxy.kubeconfig"
+- name: 准备 cni配置文件
+  template: src=cni-default.conf.j2 dest=/etc/cni/net.d/10-default.conf
 
-- name: 创建kube-proxy的工作目录
-  file: name=/var/lib/kube-proxy state=directory
+# 判断 kubernetes 版本
+- name: 注册变量 TMP_VER
+  shell: "{{ base_dir }}/bin/kube-apiserver --version|cut -d' ' -f2|cut -d'v' -f2"
+  register: TMP_VER
+  connection: local
+  tags: upgrade_k8s, restart_node
+
+- name: 获取 kubernetes 主版本号
+  set_fact:
+    KUBE_VER: "{{ TMP_VER.stdout.split('.')[0]|int + TMP_VER.stdout.split('.')[1]|int/100 }}"
+  tags: upgrade_k8s, restart_node
+
+- name: debug info
+  debug: var="KUBE_VER"
+
+- name: 创建kubelet的配置文件
+  template: src=kubelet-config.yaml.j2 dest=/var/lib/kubelet/config.yaml
+  tags: upgrade_k8s, restart_node
+
+- name: 创建kubelet的systemd unit文件
+  template: src=kubelet.service.j2 dest=/etc/systemd/system/kubelet.service
+  tags: upgrade_k8s, restart_node
+
+- name: 开机启用kubelet 服务
+  shell: systemctl enable kubelet
+  ignore_errors: true
+
+- name: 开启kubelet 服务
+  shell: systemctl daemon-reload && systemctl restart kubelet
+  tags: upgrade_k8s, restart_node
+
+##-------kube-proxy部分----------------
+
+- name: 替换 kube-proxy.kubeconfig 的 apiserver 地址
+  lineinfile:
+    dest: /etc/kubernetes/kube-proxy.kubeconfig
+    regexp: "^    server"
+    line: "    server: {{ KUBE_APISERVER }}"
 
 - name: 创建kube-proxy 服务文件
-  tags: reload-kube-proxy
   template: src=kube-proxy.service.j2 dest=/etc/systemd/system/kube-proxy.service
+  tags: reload-kube-proxy, restart_node, upgrade_k8s
+
+- name: 开机启用kube-proxy 服务
+  shell: systemctl enable kube-proxy
+  ignore_errors: true
 
 - name: 开启kube-proxy 服务
-  tags: reload-kube-proxy
-  shell: systemctl daemon-reload && systemctl enable kube-proxy && systemctl restart kube-proxy
+  shell: systemctl daemon-reload && systemctl restart kube-proxy
+  tags: reload-kube-proxy, upgrade_k8s, restart_node
 
-##-------calico-kube-controllers部分----------------
-#
-- name: 创建calico-kube-controllers目录
-  tags: calico-controller
-  file: name=/root/local/kube-system/calico state=directory
+# 轮询等待kubelet启动完成
+- name: 轮询等待kubelet启动
+  shell: "systemctl status kubelet.service|grep Active"
+  register: kubelet_status
+  until: '"running" in kubelet_status.stdout'
+  retries: 8
+  delay: 2
+  tags: reload-kube-proxy, upgrade_k8s, restart_node
 
-- name: 准备RBAC 配置文件
-  tags: calico-controller
-  copy: src=rbac.yaml dest=/root/local/kube-system/calico/rbac.yaml
+- name: 轮询等待node达到Ready状态
+  shell: "{{ bin_dir }}/kubectl get node {{ inventory_hostname }}|awk 'NR>1{print $2}'"
+  register: node_status
+  until: node_status.stdout == "Ready" or node_status.stdout == "Ready,SchedulingDisabled"
+  retries: 8 
+  delay: 8
+  tags: upgrade_k8s, restart_node
 
-- name: 准备calico-kube-controllers.yaml 文件
-  tags: calico-controller
-  template: src=calico-kube-controllers.yaml.j2 dest=/root/local/kube-system/calico/calico-kube-controllers.yaml
-
-# 只需单节点执行一次，重复执行的报错可以忽略
-# 增加15s等待node ready
-- name: 运行calico-kube-controllers
-  tags: calico-controller
-  shell: "sleep 15 && {{ bin_dir }}/kubectl create -f /root/local/kube-system/calico/rbac.yaml && \ 
-	{{ bin_dir }}/kubectl create -f /root/local/kube-system/calico/calico-kube-controllers.yaml"
-  when: NODE_ID is defined and NODE_ID == "node1"
+- name: 设置node节点role
+  shell: "{{ bin_dir }}/kubectl label node {{ inventory_hostname }} kubernetes.io/role=node --overwrite"
   ignore_errors: true
