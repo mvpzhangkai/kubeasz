@@ -1,6 +1,7 @@
 ### 第一部分：EFK
 
 `EFK` 插件是`k8s`项目的一个日志解决方案，它包括三个组件：[Elasticsearch](), [Fluentd](), [Kibana]()；Elasticsearch 是日志存储和日志搜索引擎，Fluentd 负责把`k8s`集群的日志发送给 Elasticsearch, Kibana 则是可视化界面查看和检索存储在 ES 中的数据。
+- 建议在熟悉本文档内容后使用[Log-Pilot + ES + Kibana 日志方案](log-pilot.md)
 
 ### 准备 
 
@@ -50,7 +51,7 @@ Kibana is running at https://192.168.1.10:8443/api/v1/namespaces/kube-system/ser
 ```
 浏览器访问 URL：`https://192.168.1.10:8443/api/v1/namespaces/kube-system/services/kibana-logging/proxy`，然后使用`basic-auth`或者`证书` 的方式认证后即可，关于认证可以参考[dashboard文档](dashboard.md)
 
-首次登陆需要在`Management` - `Index Patterns` 创建 `index pattern`，可以使用默认的 logstash-* pattern，点击下一步；在 Time Filter field name 下拉框选择 @timestamp; 点击创建Index Pattern后，稍等几分钟就可以在 Discover 菜单看到 ElasticSearch logging 中汇聚的日志；
+首次登录需要在`Management` - `Index Patterns` 创建 `index pattern`，可以使用默认的 logstash-* pattern，点击下一步；在 Time Filter field name 下拉框选择 @timestamp; 点击创建Index Pattern后，稍等几分钟就可以在 Discover 菜单看到 ElasticSearch logging 中汇聚的日志；
 
 ### 第二部分：日志持久化之静态PV
 日志数据是存放于 `Elasticsearch POD`中，但是默认情况下它使用的是`emptyDir`存储类型，所以当 `POD`被删除或重新调度时，日志数据也就丢失了。以下讲解使用`NFS` 服务器手动（静态）创建`PV` 持久化保存日志数据的例子。
@@ -110,7 +111,7 @@ kube-system   elasticsearch-logging-elasticsearch-logging-1   Bound     pv-es-1 
 
 + 2.网页访问 `kibana`查看具体的日志，如上须等待（约15分钟） `kibana Pod`优化和 Cache 状态页面，达到 `Ready` 状态。
 
-+ 3.登陆 NFS Server 查看对应目录和内部数据
++ 3.登录 NFS Server 查看对应目录和内部数据
 
 ``` bash
 $ ls /share
@@ -174,7 +175,7 @@ kube-system   elasticsearch-logging-elasticsearch-logging-1   Bound     pvc-5b10
 
 + 2.网页访问 `kibana`查看具体的日志，如上须等待（约15分钟） `kibana Pod`优化和 Cache 状态页面，达到 `Ready` 状态。
 
-+ 3.登陆 NFS Server 查看对应目录和内部数据
++ 3.登录 NFS Server 查看对应目录和内部数据
 
 ``` bash
 $ ls /share # 可以看到类似如下的目录生成

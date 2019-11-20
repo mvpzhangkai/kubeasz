@@ -15,10 +15,10 @@ set -o errexit
 
 # default version, can be overridden by cmd line options
 export DOCKER_VER=18.09.9
-export KUBEASZ_VER=2.0.3
-export K8S_BIN_VER=v1.15.2
-export EXT_BIN_VER=0.3.0
-export SYS_PKG_VER=0.3.2
+export KUBEASZ_VER=2.1.0
+export K8S_BIN_VER=v1.16.2
+export EXT_BIN_VER=0.3.2
+export SYS_PKG_VER=0.3.3
 
 function install_docker() {
   # check if a container runtime is already installed
@@ -184,10 +184,10 @@ function get_offline_image() {
   # images needed by k8s cluster
   calicoVer=v3.4.4
   corednsVer=1.6.2
-  dashboardVer=v1.10.1
+  dashboardVer=v2.0.0-beta6
+  dashboardMetricsScraperVer=v1.0.2
   flannelVer=v0.11.0-amd64
-  heapsterVer=v1.5.4
-  metricsVer=v0.3.4
+  metricsVer=v0.3.6
   pauseVer=3.1
   traefikVer=v1.7.12
 
@@ -207,16 +207,16 @@ function get_offline_image() {
     docker save -o ${imageDir}/coredns_${corednsVer}.tar coredns/coredns:${corednsVer}
   fi
   if [[ ! -f "$imageDir/dashboard_$dashboardVer.tar" ]];then
-    docker pull mirrorgooglecontainers/kubernetes-dashboard-amd64:${dashboardVer} && \
-    docker save -o ${imageDir}/dashboard_${dashboardVer}.tar mirrorgooglecontainers/kubernetes-dashboard-amd64:${dashboardVer}
+    docker pull kubernetesui/dashboard:${dashboardVer} && \
+    docker save -o ${imageDir}/dashboard_${dashboardVer}.tar kubernetesui/dashboard:${dashboardVer}
   fi
   if [[ ! -f "$imageDir/flannel_$flannelVer.tar" ]];then
     docker pull easzlab/flannel:${flannelVer} && \
     docker save -o ${imageDir}/flannel_${flannelVer}.tar easzlab/flannel:${flannelVer}
   fi
-  if [[ ! -f "$imageDir/heapster_$heapsterVer.tar" ]];then
-    docker pull mirrorgooglecontainers/heapster-amd64:${heapsterVer} && \
-    docker save -o ${imageDir}/heapster_${heapsterVer}.tar mirrorgooglecontainers/heapster-amd64:${heapsterVer}
+  if [[ ! -f "$imageDir/metrics-scraper_$dashboardMetricsScraperVer.tar" ]];then
+    docker pull kubernetesui/metrics-scraper:${dashboardMetricsScraperVer} && \
+    docker save -o ${imageDir}/metrics-scraper_${dashboardMetricsScraperVer}.tar kubernetesui/metrics-scraper:${dashboardMetricsScraperVer}
   fi
   if [[ ! -f "$imageDir/metrics-server_$metricsVer.tar" ]];then
     docker pull mirrorgooglecontainers/metrics-server-amd64:${metricsVer} && \

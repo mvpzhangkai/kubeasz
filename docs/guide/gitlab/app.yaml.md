@@ -21,7 +21,7 @@ data:
 type: kubernetes.io/dockerconfigjson
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: APP_NAME
@@ -36,7 +36,6 @@ spec:
       containers:
       - name: APP_NAME
         image: ProjectImage
-        imagePullPolicy: Always
         env:
           # 设置java的时区
           - name: TZ
@@ -71,7 +70,7 @@ spec:
   sessionAffinity: None
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1 
 kind: Ingress
 metadata:
   name: APP_NAME-ingress
