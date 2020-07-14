@@ -4,15 +4,16 @@
 
 ![ha-2x](../../pics/ha-2x.gif)
 
-- 注意1：请确保各节点时区设置一致、时间同步。 如果你的环境没有提供NTP 时间同步，推荐集成安装[chrony](../guide/chrony.md)
-- 注意2：在公有云上创建多主集群，请结合阅读[在公有云上部署 kubeasz](kubeasz_on_public_cloud.md)
+- 注意1：确保各节点时区设置一致、时间同步。 如果你的环境没有提供NTP 时间同步，推荐集成安装[chrony](../guide/chrony.md)
+- 注意2：确保在干净的系统上开始安装，不要使用曾经装过kubeadm或其他k8s发行版的环境
 - 注意3：建议操作系统升级到新的稳定内核，请结合阅读[内核升级文档](../guide/kernel_upgrade.md)
+- 注意4：在公有云上创建多主集群，请结合阅读[在公有云上部署 kubeasz](kubeasz_on_public_cloud.md)
 
 ## 高可用集群所需节点配置如下
 
 |角色|数量|描述|
 |:-|:-|:-|
-|管理节点|1|运行ansible/easzctl脚本，可以复用master，建议使用独立节点（1c1g）|
+|管理节点|1|运行ansible/easzctl脚本，一般复用master节点|
 |etcd节点|3|注意etcd集群需要1,3,5,7...奇数个节点，一般复用master节点|
 |master节点|2|高可用集群至少2个master节点|
 |node节点|3|运行应用负载的节点，可根据需要提升机器配置/增加节点数|
@@ -84,7 +85,7 @@ ssh-copy-id $IPs #$IPs为所有节点地址包括自身，按照提示输入yes 
 - 4.1 下载二进制文件
 - 4.2 下载离线docker镜像
 
-推荐使用 easzup 脚本下载 4.0/4.1/4.2 所需文件；运行成功后，所有文件（kubeasz代码、二进制、离线镜像）均已整理好放入目录`/etc/ansilbe`
+推荐使用 easzup 脚本下载 4.0/4.1/4.2 所需文件；运行成功后，所有文件（kubeasz代码、二进制、离线镜像）均已整理好放入目录`/etc/ansible`
 
 ``` bash
 # 下载工具脚本easzup，举例使用kubeasz版本2.0.2
