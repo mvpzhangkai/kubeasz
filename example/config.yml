@@ -29,6 +29,8 @@ CERT_EXPIRY: "438000h"
 CLUSTER_NAME: "cluster1"
 CONTEXT_NAME: "context-{{ CLUSTER_NAME }}"
 
+# k8s version
+K8S_VER: "__k8s_ver__"
 
 ############################
 # role:etcd
@@ -46,7 +48,7 @@ ETCD_WAL_DIR: ""
 ENABLE_MIRROR_REGISTRY: true
 
 # [containerd]基础容器镜像
-SANDBOX_IMAGE: "easzlab/pause-amd64:3.2"
+SANDBOX_IMAGE: "easzlab/pause:__pause__"
 
 # [containerd]容器持久化存储目录
 CONTAINERD_STORAGE_DIR: "/var/lib/containerd"
@@ -88,7 +90,7 @@ MAX_PODS: 110
 
 # 配置为kube组件（kubelet,kube-proxy,dockerd等）预留的资源量
 # 数值设置详见templates/kubelet-config.yaml.j2
-KUBE_RESERVED_ENABLED: "yes"
+KUBE_RESERVED_ENABLED: "no"
 
 # k8s 官方不建议草率开启 system-reserved, 除非你基于长期监控，了解系统的资源占用状况；
 # 并且随着系统运行时间，需要适当增加资源预留，数值设置详见templates/kubelet-config.yaml.j2
@@ -197,6 +199,14 @@ traefik_chart_ver: "__traefik_chart__"
 prom_install: "no"
 prom_namespace: "monitor"
 prom_chart_ver: "__prom_chart__"
+
+# nfs-provisioner 自动安装
+nfs_provisioner_install: "no"
+nfs_provisioner_namespace: "kube-system"
+nfs_provisioner_ver: "__nfs_provisioner__"
+nfs_storage_class: "managed-nfs-storage"
+nfs_server: "192.168.1.10"
+nfs_path: "/data/nfs"
 
 ############################
 # role:harbor

@@ -2,7 +2,7 @@
   service: name=etcd state=stopped
 
 - name: 清除etcd 数据目录
-  file: name=/var/lib/etcd/member state=absent
+  file: name={{ ETCD_DATA_DIR }}/member state=absent
 
 - name: 生成备份目录
   file: name=/etcd_backup state=directory
@@ -24,14 +24,14 @@
 	--initial-advertise-peer-urls https://{{ inventory_hostname }}:2380"
 
 - name: 恢复数据至etcd 数据目录
-  shell: "cp -rf /etcd_backup/etcd-{{ inventory_hostname }}.etcd/member /var/lib/etcd/"
+  shell: "cp -rf /etcd_backup/etcd-{{ inventory_hostname }}.etcd/member {{ ETCD_DATA_DIR }}/"
 
 - name: 重启etcd 服务
   service: name=etcd state=restarted
 
 - name: 以轮询的方式等待服务同步完成
-  shell: "systemctl status etcd.service|grep Active"
+  shell: "systemctl is-active etcd.service"
   register: etcd_status
-  until: '"running" in etcd_status.stdout'
+  until: '"active" in etcd_status.stdout'
   retries: 8
   delay: 8

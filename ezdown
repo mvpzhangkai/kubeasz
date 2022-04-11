@@ -13,28 +13,29 @@ set -o errexit
 #set -o xtrace
 
 # default settings, can be overridden by cmd line options, see usage
-DOCKER_VER=19.03.14
-KUBEASZ_VER=3.0.0
-K8S_BIN_VER=v1.20.2
-EXT_BIN_VER=0.8.1
-SYS_PKG_VER=0.3.3
+DOCKER_VER=20.10.9
+KUBEASZ_VER=3.2.0
+K8S_BIN_VER=v1.23.1
+EXT_BIN_VER=1.0.0
+SYS_PKG_VER=0.4.2
 HARBOR_VER=v2.1.3
 REGISTRY_MIRROR=CN
 
 # images needed by k8s cluster
-calicoVer=v3.15.3
-flannelVer=v0.13.0-amd64
-dnsNodeCacheVer=1.16.0
-corednsVer=1.7.1
-dashboardVer=v2.1.0
-dashboardMetricsScraperVer=v1.0.6
-metricsVer=v0.3.6
-pauseVer=3.2
+calicoVer=v3.19.3
+flannelVer=v0.15.1
+dnsNodeCacheVer=1.21.1
+corednsVer=1.8.6
+dashboardVer=v2.4.0
+dashboardMetricsScraperVer=v1.0.7
+metricsVer=v0.5.2
+pauseVer=3.6
+nfsProvisionerVer=v4.0.2
 export ciliumVer=v1.4.1
 export kubeRouterVer=v0.3.1
 export kubeOvnVer=v1.5.3
 export promChartVer=12.10.6
-export traefikChartVer=9.12.3
+export traefikChartVer=10.3.0
 
 function usage() {
   echo -e "\033[33mUsage:\033[0m ezdown [options] [args]"
@@ -85,10 +86,10 @@ function download_docker() {
     logger warn "docker binaries already existed"
   else
     logger info "downloading docker binaries, version $DOCKER_VER"
-    if [[ -e /usr/bin/curl ]];then
-      curl -C- -O --retry 3 "$DOCKER_URL" || { logger error "downloading docker failed"; exit 1; }
+    if [[ -e /usr/bin/wget ]];then
+      wget -c --no-check-certificate "$DOCKER_URL" || { logger error "downloading docker failed"; exit 1; }
     else
-      wget -c "$DOCKER_URL" || { logger error "downloading docker failed"; exit 1; }
+      curl -k -C- -O --retry 3 "$DOCKER_URL" || { logger error "downloading docker failed"; exit 1; }
     fi
     /bin/mv -f "./docker-$DOCKER_VER.tgz" "$BASE/down"
   fi
@@ -111,7 +112,7 @@ Documentation=http://docs.docker.io
 [Service]
 Environment="PATH=/opt/kube/bin:/bin:/sbin:/usr/bin:/usr/sbin"
 ExecStart=/opt/kube/bin/dockerd
-ExecStartPost=/sbin/iptables -I FORWARD -s 0.0.0.0/0 -j ACCEPT
+ExecStartPost=/sbin/iptables -P FORWARD ACCEPT
 ExecReload=/bin/kill -s HUP \$MAINPID
 Restart=on-failure
 RestartSec=5
@@ -126,11 +127,15 @@ EOF
 
   # configuration for dockerd
   mkdir -p /etc/docker
+  DOCKER_VER_MAIN=$(echo "$DOCKER_VER"|cut -d. -f1)
+  CGROUP_DRIVER="cgroupfs"
+  ((DOCKER_VER_MAIN>=20)) && CGROUP_DRIVER="systemd"
   logger debug "generate docker config: /etc/docker/daemon.json"
   if [[ "$REGISTRY_MIRROR" == CN ]];then
     logger debug "prepare register mirror for $REGISTRY_MIRROR"
     cat > /etc/docker/daemon.json << EOF
 {
+  "exec-opts": ["native.cgroupdriver=$CGROUP_DRIVER"],
   "registry-mirrors": [
     "https://docker.mirrors.ustc.edu.cn",
     "http://hub-mirror.c.163.com"
@@ -149,6 +154,7 @@ EOF
     logger debug "standard config without registry mirrors"
     cat > /etc/docker/daemon.json << EOF
 {
+  "exec-opts": ["native.cgroupdriver=$CGROUP_DRIVER"],
   "max-concurrent-downloads": 10,
   "log-driver": "json-file",
   "log-level": "warn",
@@ -161,20 +167,36 @@ EOF
 EOF
   fi
 
+  # docker proxy setting
+  http_proxy=${http_proxy:-}
+  HTTP_PROXY=${HTTP_PROXY:-$http_proxy}
+  https_proxy=${https_proxy:-}
+  HTTPS_PROXY=${HTTPS_PROXY:-$https_proxy}
+  USE_PROXY=0
+  CONFIG="[Service]\n"
+
+  if [[ ! -z ${HTTP_PROXY} ]]; then
+    USE_PROXY=1
+    CONFIG=${CONFIG}"Environment=HTTP_PROXY=${HTTP_PROXY}\n"
+  fi
+  if [[ ! -z ${HTTPS_PROXY} ]]; then
+    USE_PROXY=1
+    CONFIG=${CONFIG}"Environment=HTTPS_PROXY=${HTTPS_PROXY}\n"
+  fi
+  if [[ ${USE_PROXY} == 1 ]]; then
+    logger debug "generate docker service http proxy file"
+    mkdir -p /etc/systemd/system/docker.service.d
+    c=$(echo -e "$CONFIG")
+    cat > /etc/systemd/system/docker.service.d/http-proxy.conf << EOF
+${c}
+EOF
+  fi
+
   if [[ -e /etc/centos-release || -e /etc/redhat-release ]]; then
     logger debug "turn off selinux in CentOS/Redhat"
     getenforce|grep Disabled || setenforce 0
     sed -i 's/^SELINUX=.*$/SELINUX=disabled/g' /etc/selinux/config
   fi
-
-  logger info "clean iptable rules"
-  iptables -P INPUT ACCEPT && \
-  iptables -P FORWARD ACCEPT && \
-  iptables -P OUTPUT ACCEPT && \
-  iptables -F && iptables -X && \
-  iptables -F -t nat && iptables -X -t nat && \
-  iptables -F -t raw && iptables -X -t raw && \
-  iptables -F -t mangle && iptables -X -t mangle
 
   logger debug "enable and start docker"
   systemctl enable docker
@@ -220,7 +242,7 @@ function get_k8s_bin() {
 }
 
 function get_ext_bin() {
-  [[ -f "$BASE/bin/etcdctl" ]] && { logger warn "extral binaries existed"; return 0; }
+  [[ -f "$BASE/bin/etcdctl" ]] && { logger warn "extra binaries existed"; return 0; }
 
   logger info "downloading extral binaries kubeasz-ext-bin:$EXT_BIN_VER"
   docker pull "easzlab/kubeasz-ext-bin:$EXT_BIN_VER" && \
@@ -237,6 +259,7 @@ function get_ext_bin() {
 function get_sys_pkg() {
   [[ -f "$BASE/down/packages/chrony_xenial.tar.gz" ]] && { logger warn "system packages existed"; return 0; }
 
+  docker ps -a |grep temp_sys_pkg && { logger debug "remove existing container"; docker rm -f temp_sys_pkg; }
   logger info "downloading system packages kubeasz-sys-pkg:$SYS_PKG_VER"
   docker pull "easzlab/kubeasz-sys-pkg:$SYS_PKG_VER" && \
   logger debug "run a temporary container" && \
@@ -250,6 +273,7 @@ function get_sys_pkg() {
 function get_harbor_offline_pkg() {
   [[ -f "$BASE/down/harbor-offline-installer-$HARBOR_VER.tgz" ]] && { logger warn "harbor-offline existed"; return 0; }
 
+  docker ps -a |grep temp_harbor && { logger debug "remove existing container"; docker rm -f temp_harbor; }
   logger info "downloading harbor-offline:$HARBOR_VER"
   docker pull "easzlab/harbor-offline:$HARBOR_VER" && \
   logger debug "run a temporary container" && \
@@ -261,9 +285,7 @@ function get_harbor_offline_pkg() {
 }
 
 function get_offline_image() {
-
   imageDir="$BASE/down"
-  
   logger info "downloading offline images"
 
   if [[ ! -f "$imageDir/calico_$calicoVer.tar" ]];then
@@ -294,13 +316,17 @@ function get_offline_image() {
     docker save -o "$imageDir/metrics-scraper_$dashboardMetricsScraperVer.tar" "kubernetesui/metrics-scraper:$dashboardMetricsScraperVer"
   fi
   if [[ ! -f "$imageDir/metrics-server_$metricsVer.tar" ]];then
-    docker pull "mirrorgooglecontainers/metrics-server-amd64:$metricsVer" && \
-    docker save -o "$imageDir/metrics-server_$metricsVer.tar" "mirrorgooglecontainers/metrics-server-amd64:$metricsVer"
+    docker pull "easzlab/metrics-server:$metricsVer" && \
+    docker save -o "$imageDir/metrics-server_$metricsVer.tar" "easzlab/metrics-server:$metricsVer"
   fi
   if [[ ! -f "$imageDir/pause_$pauseVer.tar" ]];then
-    docker pull "easzlab/pause-amd64:$pauseVer" && \
-    docker save -o "$imageDir/pause_$pauseVer.tar" "easzlab/pause-amd64:$pauseVer"
+    docker pull "easzlab/pause:$pauseVer" && \
+    docker save -o "$imageDir/pause_$pauseVer.tar" "easzlab/pause:$pauseVer"
     /bin/cp -u "$imageDir/pause_$pauseVer.tar" "$imageDir/pause.tar"
+  fi
+  if [[ ! -f "$imageDir/nfs-provisioner_$nfsProvisionerVer.tar" ]];then
+    docker pull "easzlab/nfs-subdir-external-provisioner:$nfsProvisionerVer" && \
+    docker save -o "$imageDir/nfs-provisioner_$nfsProvisionerVer.tar" "easzlab/nfs-subdir-external-provisioner:$nfsProvisionerVer"
   fi
   if [[ ! -f "$imageDir/kubeasz_$KUBEASZ_VER.tar" ]];then
     docker pull "easzlab/kubeasz:$KUBEASZ_VER" && \
@@ -323,8 +349,8 @@ function start_kubeasz_docker() {
 
   logger info "try to run kubeasz in a container"
   # get host's IP
-  host_if=$(ip route|grep default|cut -d' ' -f5)
-  host_ip=$(ip a|grep "$host_if$"|awk '{print $2}'|cut -d'/' -f1)
+  host_if=$(ip route|grep default|head -n1|cut -d' ' -f5)
+  host_ip=$(ip a|grep "$host_if$"|head -n1|awk '{print $2}'|cut -d'/' -f1)
   logger debug "get host IP: $host_ip"
 
   # allow ssh login using key locally
@@ -336,7 +362,7 @@ function start_kubeasz_docker() {
   fi
 
   # create a link '/usr/bin/python' in Ubuntu1604
-  if [[ ! -e /usr/bin/python && -e /etc/debian_version ]]; then
+  if [[ ! -e /usr/bin/python && -e /usr/bin/python3 ]]; then
     logger debug "create a soft link '/usr/bin/python'"
     ln -s /usr/bin/python3 /usr/bin/python
   fi
@@ -346,9 +372,10 @@ function start_kubeasz_docker() {
 
   # run kubeasz docker container
   docker run --detach \
-      --name kubeasz \
-      --restart always \
       --env HOST_IP="$host_ip" \
+      --name kubeasz \
+      --network host \
+      --restart always \
       --volume "$BASE":"$BASE" \
       --volume /root/.kube:/root/.kube \
       --volume /root/.ssh:/root/.ssh \
@@ -366,7 +393,7 @@ function main() {
   BASE="/etc/kubeasz"
 
   # check if use bash shell
-  readlink /proc/$$/exe|grep -q "dash" && { logger error "you should use bash shell, not sh"; exit 1; }
+  readlink /proc/$$/exe|grep -q "bash" || { logger error "you should use bash shell, not sh"; exit 1; }
   # check if use with root
   [[ "$EUID" -ne 0 ]] && { logger error "you should run this script as root"; exit 1; }
   

@@ -65,7 +65,7 @@ yum install python -y
 ``` bash
 # 注意pip 21.0以后不再支持python2和python3.5，需要如下安装
 # To install pip for Python 2.7 install it from https://bootstrap.pypa.io/2.7/ :
-curl -O https://bootstrap.pypa.io/2.7/get-pip.py
+curl -O https://bootstrap.pypa.io/pip/2.7/get-pip.py
 python get-pip.py
 python -m pip install --upgrade "pip < 21.0"
  
@@ -82,6 +82,9 @@ ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
 ssh-keygen -t rsa -b 2048 -N '' -f ~/.ssh/id_rsa
 
 ssh-copy-id $IPs #$IPs为所有节点地址包括自身，按照提示输入yes 和root密码
+
+# 为每个节点设置python软链接
+ssh $IPs ln -s /usr/bin/python3 /usr/bin/python
 ```
 
 ### 4.在部署节点编排k8s安装
@@ -91,7 +94,7 @@ ssh-copy-id $IPs #$IPs为所有节点地址包括自身，按照提示输入yes 
 ``` bash
 # 下载工具脚本ezdown，举例使用kubeasz版本3.0.0
 export release=3.0.0
-curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/${release}/ezdown
+wget https://github.com/easzlab/kubeasz/releases/download/${release}/ezdown
 chmod +x ./ezdown
 # 使用工具脚本下载
 ./ezdown -D
