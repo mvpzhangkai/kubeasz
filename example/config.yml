@@ -16,6 +16,9 @@ OS_HARDEN: false
 CA_EXPIRY: "876000h"
 CERT_EXPIRY: "438000h"
 
+# force to recreate CA and other certs, not suggested to set 'true'
+CHANGE_CA: false
+
 # kubeconfig 配置参数
 CLUSTER_NAME: "cluster1"
 CONTEXT_NAME: "context-{{ CLUSTER_NAME }}"
@@ -98,12 +101,12 @@ SYS_RESERVED_ENABLED: "no"
 FLANNEL_BACKEND: "vxlan"
 DIRECT_ROUTING: false
 
-# [flannel] flanneld_image: "quay.io/coreos/flannel:v0.10.0-amd64"
-flannelVer: "__flannel__"
-flanneld_image: "easzlab.io.local:5000/easzlab/flannel:{{ flannelVer }}"
+# [flannel] 
+flannel_ver: "__flannel__"
 
 # ------------------------------------------- calico
-# [calico]设置 CALICO_IPV4POOL_IPIP=“off”,可以提高网络性能，条件限制详见 docs/setup/calico.md
+# [calico] IPIP隧道模式可选项有: [Always, CrossSubnet, Never],跨子网可以配置为Always与CrossSubnet(公有云建议使用always比较省事，其他的话需要修改各自公有云的网络配置，具体可以参考各个公有云说明)
+# 其次CrossSubnet为隧道+BGP路由混合模式可以提升网络性能，同子网配置为Never即可.
 CALICO_IPV4POOL_IPIP: "Always"
 
 # [calico]设置 calico-node使用的host IP，bgp邻居通过该地址建立，可手工指定也可以自动发现
@@ -120,7 +123,7 @@ CALICO_RR_ENABLED: false
 # CALICO_RR_NODES: ["192.168.1.1", "192.168.1.2"]
 CALICO_RR_NODES: []
 
-# [calico]更新支持calico 版本: [v3.3.x] [v3.4.x] [v3.8.x] [v3.15.x]
+# [calico]更新支持calico 版本: ["3.19", "3.23"]
 calico_ver: "__calico__"
 
 # [calico]calico 主版本
@@ -195,7 +198,9 @@ network_check_schedule: "*/5 * * * *"
 # harbor version，完整版本号
 HARBOR_VER: "__harbor__"
 HARBOR_DOMAIN: "harbor.easzlab.io.local"
+HARBOR_PATH: /var/data
 HARBOR_TLS_PORT: 8443
+HARBOR_REGISTRY: "{{ HARBOR_DOMAIN }}:{{ HARBOR_TLS_PORT }}"
 
 # if set 'false', you need to put certs named harbor.pem and harbor-key.pem in directory 'down'
 HARBOR_SELF_SIGNED_CERT: true
