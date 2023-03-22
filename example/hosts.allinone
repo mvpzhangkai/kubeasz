@@ -2,13 +2,17 @@
 [etcd]
 192.168.1.1
 
-# master node(s)
+# master node(s), set unique 'k8s_nodename' for each node
+# CAUTION: 'k8s_nodename' must consist of lower case alphanumeric characters, '-' or '.',
+# and must start and end with an alphanumeric character
 [kube_master]
 192.168.1.1
 
-# work node(s)
+# work node(s), set unique 'k8s_nodename' for each node
+# CAUTION: 'k8s_nodename' must consist of lower case alphanumeric characters, '-' or '.',
+# and must start and end with an alphanumeric character
 [kube_node]
-192.168.1.1
+192.168.1.1 k8s_nodename=''
 
 # [optional] harbor server, a private docker registry
 # 'NEW_INSTALL': 'true' to install a harbor server; 'false' to integrate with existed one
@@ -63,3 +67,6 @@ cluster_dir="{{ base_dir }}/clusters/_cluster_name_"
 
 # CA and other components cert/key Directory
 ca_dir="/etc/kubernetes/ssl"
+
+# Default 'k8s_nodename' is empty
+k8s_nodename=''
