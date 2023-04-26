@@ -14,9 +14,9 @@ set -o pipefail
 
 # default settings, can be overridden by cmd line options, see usage
 DOCKER_VER=20.10.22
-KUBEASZ_VER=3.5.2
-K8S_BIN_VER=v1.26.1
-EXT_BIN_VER=1.6.6
+KUBEASZ_VER=3.5.3
+K8S_BIN_VER=v1.26.4
+EXT_BIN_VER=1.7.1
 SYS_PKG_VER=0.5.2
 HARBOR_VER=v2.6.3
 REGISTRY_MIRROR=CN
@@ -220,7 +220,7 @@ function get_kubeasz() {
   logger debug " run a temporary container"
   docker run -d --name temp_easz easzlab/kubeasz:${KUBEASZ_VER} || { logger error "download failed."; exit 1; }
 
-  [[ -f "$BASE/down/docker-${DOCKER_VER}.tgz" ]] && /bin/mv -f "$BASE/down/docker-${DOCKER_VER}.tgz" /tmp
+  [[ -d "$BASE/down" ]] && /bin/mv -f "$BASE/down" /tmp
   [[ -d "$BASE/bin" ]] && /bin/mv -f "$BASE/bin" /tmp
 
   rm -rf "$BASE" && \
@@ -230,7 +230,7 @@ function get_kubeasz() {
   docker rm -f temp_easz
 
   mkdir -p "$BASE/bin" "$BASE/down"
-  [[ -f "/tmp/docker-${DOCKER_VER}.tgz" ]] && /bin/mv -f "/tmp/docker-${DOCKER_VER}.tgz" "$BASE/down"
+  [[ -d "/tmp/down" ]] && /bin/mv -f /tmp/down/* "$BASE/down"
   [[ -d "/tmp/bin" ]] && /bin/mv -f /tmp/bin/* "$BASE/bin"
   return 0
 }

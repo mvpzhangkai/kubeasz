@@ -7,14 +7,12 @@
 
 - name: apt 卸载 ntp
   shell: 'apt remove -y ntp'
-  when: 'ansible_distribution in ["Ubuntu","Debian"]' 
+  when: 'ansible_distribution in ["Ubuntu","Debian"]'
   ignore_errors: true
 
 - name: yum 卸载 ntp
   shell: 'yum remove -y ntp'
   when: 'ansible_distribution in ["CentOS","RedHat","Amazon","Aliyun"]'
-  args:
-      warn: false
   ignore_errors: true
 
 - name: 下载二进制文件chronyd
@@ -32,7 +30,7 @@
   when: 'inventory_hostname != groups.chrony[0]'
 
 - name: 开机启用chronyd服务
-  shell: systemctl enable chronyd
+  shell: systemctl disable chronyd && systemctl enable chronyd
   ignore_errors: true
 
 - name: 开启chronyd服务
