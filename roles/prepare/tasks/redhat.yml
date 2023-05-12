@@ -1,14 +1,15 @@
 - name: 删除centos/redhat默认安装
-  shell: "yum remove -y {{ item }}"
-  with_items:
-    - firewalld
-    - python-firewall
-    - firewalld-filesystem
+  package:
+    name:
+      - firewalld
+      - python-firewall
+      - firewalld-filesystem
+    state: absent
   ignore_errors: true
 
 - name: 安装基础软件包
-  yum: 
-    name: 
+  package: 
+    name:
       - bash-completion     # bash命令补全工具，需要重新登录服务器生效
       - conntrack-tools     # ipvs 模式需要
       - ipset               # ipvs 模式需要
@@ -42,6 +43,7 @@
     state: present
     regexp: 'ModLoad imjournal'
     line: '#$ModLoad imjournal # provides access to the systemd journal'
+  ignore_errors: true
 
 - name: 禁止rsyslog获取journald日志2
   lineinfile:
@@ -49,6 +51,8 @@
     state: present
     regexp: 'IMJournalStateFile'
     line: '#$IMJournalStateFile imjournal.state'
+  ignore_errors: true
 
 - name: 重启rsyslog服务
   service: name=rsyslog state=restarted
+  ignore_errors: true

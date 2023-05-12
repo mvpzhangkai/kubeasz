@@ -10,10 +10,6 @@
     state: absent
     backup: 'yes'
 
-- name: 转换内核版本为浮点数
-  set_fact:
-    KERNEL_VER: "{{ ansible_kernel.split('-')[0].split('.')[0]|int + ansible_kernel.split('-')[0].split('.')[1]|int/100 }}"
-
 - name: 加载内核模块
   modprobe: name={{ item }} state=present
   with_items:
@@ -59,6 +55,20 @@
     reload: yes
   when: fs_may_detach_mounts.stat.exists|bool
 
+- name: 查看是否需要设置 net.ipv4.tcp_tw_recycle
+  stat:
+    path: /proc/sys/net/ipv4/tcp_tw_recycle
+  register: tcp_tw_recycle
+  ignore_errors: true
+
+- name: 设置tcp_tw_recycle
+  sysctl:
+    sysctl_file: "/etc/sysctl.d/95-k8s-sysctl.conf"
+    name: net.ipv4.tcp_tw_recycle
+    value: 0
+    state: present
+    reload: yes
+  when: tcp_tw_recycle.stat.exists|bool
 
 - name: 生效系统参数
   shell: "source /etc/profile; sysctl -p /etc/sysctl.d/95-k8s-sysctl.conf"

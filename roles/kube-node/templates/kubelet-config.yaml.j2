@@ -54,7 +54,9 @@ imageMinimumGCAge: 2m0s
 {% if KUBE_RESERVED_ENABLED == "yes" %}
 kubeReservedCgroup: /podruntime.slice
 kubeReserved:
+  cpu: 200m
   memory: 400Mi
+  pid: 1000
 {% endif %}
 kubeAPIBurst: 100
 kubeAPIQPS: 50
@@ -65,15 +67,11 @@ nodeLeaseDurationSeconds: 40
 nodeStatusReportFrequency: 1m0s
 nodeStatusUpdateFrequency: 10s
 oomScoreAdj: -999
-podPidsLimit: -1
+podPidsLimit: {{ POD_MAX_PIDS }}
 port: 10250
 # disable readOnlyPort 
 readOnlyPort: 0
-{% if ansible_distribution == "Ubuntu" and ansible_distribution_major_version|int > 16 %}
-resolvConf: /run/systemd/resolve/resolv.conf
-{% else %}
 resolvConf: /etc/resolv.conf
-{% endif %}
 runtimeRequestTimeout: 2m0s
 serializeImagePulls: true
 streamingConnectionIdleTimeout: 4h0m0s
@@ -81,7 +79,9 @@ syncFrequency: 1m0s
 {% if SYS_RESERVED_ENABLED == "yes" %}
 systemReservedCgroup: /system.slice
 systemReserved:
-  memory: 1000Mi
+  cpu: 200m
+  memory: 500Mi
+  pid: 5000
 {% endif %}
 tlsCertFile: {{ ca_dir }}/kubelet.pem
 tlsPrivateKeyFile: {{ ca_dir }}/kubelet-key.pem
