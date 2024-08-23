@@ -1,5 +1,7 @@
 ### 第一部分：EFK
 
+本文档已过期(deprecated)
+
 `EFK` 插件是`k8s`项目的一个日志解决方案，它包括三个组件：[Elasticsearch](), [Fluentd](), [Kibana]()；Elasticsearch 是日志存储和日志搜索引擎，Fluentd 负责把`k8s`集群的日志发送给 Elasticsearch, Kibana 则是可视化界面查看和检索存储在 ES 中的数据。
 - 建议在熟悉本文档内容后使用[Log-Pilot + ES + Kibana 日志方案](log-pilot.md)
 
@@ -41,9 +43,14 @@ $ kubectl logs -n kube-system kibana-logging-d5cffd7c6-9lz2p -f
 
 ### 访问 Kibana
 
-推荐使用`kube-apiserver`方式访问（可以使用basic-auth、证书和rbac等方式进行认证授权），获取访问 URL
+推荐使用`kube-apiserver`方式访问（可以使用证书和rbac等方式进行认证授权），获取访问 URL
 
-- 开启 apiserver basic-auth(用户名/密码认证)：`ezctl basic-auth -s -u admin -p test1234`
+- 使用证书登录(生成kubecfg.p12，并将证书下载到本地安装)：
+```bash
+grep 'client-certificate-data' ~/.kube/config | head -n 1 | awk '{print $2}' | base64 -d > kubecfg.crt
+grep 'client-key-data' ~/.kube/config | head -n 1 | awk '{print $2}' | base64 -d > kubecfg.key
+openssl pkcs12 -export -clcerts -inkey kubecfg.key -in kubecfg.crt -out kubecfg.p12 -name "kubernetes-client"
+```
 
 ``` bash
 $ kubectl cluster-info | grep Kibana

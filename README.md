@@ -5,8 +5,8 @@
 **kubeasz** 从每一个单独部件组装到完整的集群，提供最灵活的配置能力，几乎可以设置任何组件的任何参数；同时又为集群创建预置一套运行良好的默认配置，甚至自动化创建适合大规模集群的[BGP Route Reflector网络模式](docs/setup/network-plugin/calico-bgp-rr.md)。
 
 - **集群特性** [Master高可用](docs/setup/00-planning_and_overall_intro.md#ha-architecture)、[离线安装](docs/setup/offline_install.md)、[多架构支持(amd64/arm64)](docs/setup/multi_platform.md)
-- **集群版本** kubernetes v1.24, v1.25, v1.26, v1.27
-- **运行时** [containerd](docs/setup/03-container_runtime.md) v1.6.x
+- **集群版本** kubernetes v1.24, v1.25, v1.26, v1.27, v1.28, v1.29, v1.30
+- **运行时** [containerd](docs/setup/03-container_runtime.md) v1.6.x, v1.7.x
 - **网络** [calico](docs/setup/network-plugin/calico.md), [cilium](docs/setup/network-plugin/cilium.md), [flannel](docs/setup/network-plugin/flannel.md), [kube-ovn](docs/setup/network-plugin/kube-ovn.md), [kube-router](docs/setup/network-plugin/kube-router.md)
 
 
@@ -17,20 +17,30 @@
 <table>
   <thead>
     <tr>
-      <td>Kubernetes version</td>
+      <td>Kubernetes</td>
+      <td>1.22</td>
+      <td>1.23</td>
       <td>1.24</td>
       <td>1.25</td>
       <td>1.26</td>
       <td>1.27</td>
+      <td>1.28</td>
+      <td>1.29</td>
+      <td>1.30</td>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>kubeasz version</td>
-      <td>3.3.5</td>
-      <td>3.4.6</td>
-      <td>3.5.3</td>
-      <td>3.6.0</td>
+      <td>kubeasz</td>
+      <td>3.1.1</td>
+      <td>3.2.0</td>
+      <td>3.6.2</td>
+      <td>3.6.2</td>
+      <td>3.6.2</td>
+      <td>3.6.2</td>
+      <td>3.6.2</td>
+      <td>3.6.3</td>
+      <td>3.6.4</td>
     </tr>
   </tbody>
 </table>
@@ -39,13 +49,14 @@
 
 - **Alibaba Linux** 2.1903, 3.2104([notes](docs/setup/multi_os.md#Alibaba))
 - **Alma Linux** 8, 9
-- **Anolis OS** 8.x RHCK, 8.x ANCK([notes](docs/setup/multi_os.md#Anolis))
+- **Anolis OS** 8.x RHCK, 8.x ANCK
 - **CentOS/RHEL** 7, 8, 9
 - **Debian** 10, 11([notes](docs/setup/multi_os.md#Debian))
 - **Fedora** 34, 35, 36, 37
+- **Kylin Linux Advanced Server V10** 麒麟V10 Tercel, Lance
 - **openSUSE** Leap 15.x([notes](docs/setup/multi_os.md#openSUSE))
 - **Rocky Linux** 8, 9
-- **Ubuntu** 16.04, 18.04, 20.04, 22.04
+- **Ubuntu** 16.04, 18.04, 20.04, 22.04, 24.04
 
 能够支持大部分使用systemd的linux发行版，如果安装有问题先请查看[文档](docs/setup/multi_os.md)；如果某个能够支持安装的系统没有在列表中，欢迎提PR 告知。
 
@@ -103,13 +114,14 @@
         <td><a href="docs/guide/helm.md">helm</a></td>
         <td><a href="docs/guide/jenkins.md">jenkins</a></td>
         <td><a href="docs/guide/gitlab/readme.md">gitlab</a></td>
+        <td><a href="docs/guide/argocd.md">argocd</a></td>
         <td><a href=""></a></td>
     </tr>
 </table>
 
 ## 沟通交流
 
-- 微信群：k8s&kubeasz实践, 搜索微信号`badtobone`, 请备注（城市-github用户名）, 验证通过会加入群聊。
+- 微信：k8s&kubeasz实践, 搜索微信号`badtobone`, 请按格式备注（${城市}-${github用户名}）, 验证后加入群聊。
 - 推荐阅读
   - [kubernetes架构师课程](https://www.toutiao.com/c/user/token/MS4wLjABAAAA0YFomuMNm87NNysXeUsQdI0Tt3gOgz8WG_0B3MzxsmI/?tab=article)
   - [kubernetes-the-hard-way](https://github.com/kelseyhightower/kubernetes-the-hard-way)

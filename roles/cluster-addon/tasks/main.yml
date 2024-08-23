@@ -18,11 +18,17 @@
 - import_tasks: prometheus.yml
   when: 'prom_install == "yes"'
 
+- import_tasks: local-storage.yml
+  when: '"local-path-provisioner" not in pod_info.stdout or CHANGE_CA|bool'
+
 - import_tasks: nfs-provisioner.yml
   when: '"nfs-client-provisioner" not in pod_info.stdout or CHANGE_CA|bool'
 
 - import_tasks: cilium_connectivity_check.yml
-  when: 'CLUSTER_NETWORK == "cilium"'
+  when: 'CLUSTER_NETWORK == "cilium" and network_check_enabled|bool'
 
 - import_tasks: network_check.yml
   when: 'network_check_enabled|bool and CLUSTER_NETWORK != "cilium"'
+
+- import_tasks: kubeapps.yml
+  when: 'kubeapps_install == "yes"'

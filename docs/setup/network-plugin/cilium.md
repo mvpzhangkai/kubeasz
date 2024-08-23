@@ -9,30 +9,32 @@
 - 高性能负载均衡，支持DSR
 - 支持事件、策略跟踪和监控集成
 
-cilium 项目当前文档比较完整，建议仔细阅读下[官网文档]()
+cilium 项目文档比较完整，建议仔细阅读[官网文档]()
 
 ## kubeasz 集成安装 cilium
 
 kubeasz 3.3.1 更新重写了cilium 安装流程，使用helm charts 方式，配置文件在 roles/cilium/templates/values.yaml.j2，请阅读原charts中values.yaml 文件后自定义修改。
 
+- https://docs.cilium.io/en/stable/installation/k8s-install-helm/#k8s-install-helm
 - 相关镜像已经离线打包并推送到本地镜像仓库，通过 `ezdown -X` 命令下载cilium等额外镜像
 
-### 0.升级内核并重启
+### 0.检查系统内核版本
 
-- Linux kernel >= 4.9.17，请阅读文档[升级内核](guide/kernel_upgrade.md)
+- Linux kernel >= 4.9.17，如需升级请阅读文档[升级内核](guide/kernel_upgrade.md)
 - etcd >= 3.1.0 or consul >= 0.6.4
 
 ### 1.选择cilium网络后安装
 
-- 参考[快速指南](quickStart.md)，设置`/etc/kubeasz/clusters/xxx/hosts`文件中变量 `CLUSTER_NETWORK="cilium"` 
+- 参考[快速指南](../quickStart.md)，设置`/etc/kubeasz/clusters/xxx/hosts`文件中变量 `CLUSTER_NETWORK="cilium"` 
+- 下载额外镜像 `./ezdown -X cilium 和 ./ezdown -X network-check`
 - 执行集群安装 `dk ezctl setup xxx all`
 
-注意默认安装后集成了cilium_connectivity_check 和 cilium_hubble，可以在`/etc/kubeasz/clusters/xxx/config.yml`配置关闭
+注意默认设置未集成cilium_hubble，可以在`/etc/kubeasz/clusters/xxx/config.yml`配置启用后再开始安装。
 
 - cilium_connectivity_check：检查集群cilium网络是否工作正常，非常实用
 - cilium_hubble：很酷很实用的监控、策略追踪排查工具
 
-Cilium CLI 和 Hubble CLI 二进制已经默认包含在kubeasz-ext-bin 1.2.0版本中 https://github.com/kubeasz/dockerfiles/blob/master/kubeasz-ext-bin/Dockerfile
+Cilium CLI 和 Hubble CLI 二进制已经默认包含在kubeasz-ext-bin 1.2.0及之后的版本中 https://github.com/kubeasz/dockerfiles/blob/master/kubeasz-ext-bin/Dockerfile
 
 ### 2.验证
 

@@ -158,9 +158,11 @@ function new() {
     dashboardVer=$(grep 'dashboardVer=' ezdown|cut -d'=' -f2)
     dashboardMetricsScraperVer=$(grep 'dashboardMetricsScraperVer=' ezdown|cut -d'=' -f2)
     metricsVer=$(grep 'metricsVer=' ezdown|cut -d'=' -f2)
+    localpathProvisionerVer=$(grep 'localpathProvisionerVer=' ezdown|cut -d'=' -f2)
     nfsProvisionerVer=$(grep 'nfsProvisionerVer=' ezdown|cut -d'=' -f2)
     pauseVer=$(grep 'pauseVer=' ezdown|cut -d'=' -f2)
     promChartVer=$(grep 'promChartVer=' ezdown|cut -d'=' -f2)
+    kubeappsVer=$(grep 'kubeappsVer=' ezdown|cut -d'=' -f2)
     harborVer=$(grep 'HARBOR_VER=' ezdown|cut -d'=' -f2)
     registryMirror=true
 
@@ -177,8 +179,10 @@ function new() {
 	   -e "s/__dns_node_cache__/$dnsNodeCacheVer/g" \
 	   -e "s/__dashboard__/$dashboardVer/g" \
 	   -e "s/__dash_metrics__/$dashboardMetricsScraperVer/g" \
+	   -e "s/__local_path_provisioner__/$localpathProvisionerVer/g" \
 	   -e "s/__nfs_provisioner__/$nfsProvisionerVer/g" \
 	   -e "s/__prom_chart__/$promChartVer/g" \
+	   -e "s/__kubeapps_chart__/$kubeappsVer/g" \
 	   -e "s/__harbor__/$harborVer/g" \
 	   -e "s/^ENABLE_MIRROR_REGISTRY.*$/ENABLE_MIRROR_REGISTRY: $registryMirror/g" \
 	   -e "s/__metrics__/$metricsVer/g" "clusters/$1/config.yml"
@@ -239,15 +243,15 @@ function setup() {
 
     k8s_ver=$(bin/kube-apiserver --version|cut -d' ' -f2)
     etcd_ver=v$(bin/etcd --version|grep 'etcd Version'|cut -d' ' -f3)
-    network_cni=$(grep CLUSTER_NETWORK clusters/$1/hosts|cut -d'"' -f2)
-    network_cni_ver=$(grep ${network_cni}Ver ezdown|cut -d'=' -f2|head -n1)
+    network_cni=$(grep CLUSTER_NETWORK "clusters/$1/hosts"|cut -d'"' -f2|sed 's/-//g')
+    network_cni_ver=$(grep -i "${network_cni}Ver" ezdown|cut -d'=' -f2|head -n1)
 
     cat <<EOF
 *** Component Version *********************
 *******************************************
-*   kubernetes:     ${k8s_ver}
-*   etcd:           ${etcd_ver}
-*   ${network_cni}:         ${network_cni_ver}
+*   kubernetes: ${k8s_ver}
+*   etcd: ${etcd_ver}
+*   ${network_cni}: ${network_cni_ver}
 *******************************************
 EOF
 
@@ -315,7 +319,7 @@ function list() {
             else
                 echo -e "==> cluster $i:\t$c"
             fi
-            let "i++"
+            ((i++))
         fi
     done
 }
@@ -337,9 +341,6 @@ function add-node() {
     # check if the new node already exsited
     sed -n '/^\[kube_master/,/^\[harbor/p' "$BASE/clusters/$1/hosts"|grep -E "^$2$|^$2 " && { logger error "node $2 already existed in $BASE/clusters/$1/hosts"; return 2; }
 
-    # add '/usr/bin/python' soft link, needed in some OS (ubuntu 16.04+) 
-    ssh "$2" ln -s /usr/bin/python3 /usr/bin/python > /dev/null 2>&1 || echo ""
-
     logger info "add $2 into 'kube_node' group"
     NODE_INFO="${@:2}"
     sed -i "/\[kube_node/a $NODE_INFO" "$BASE/clusters/$1/hosts"
@@ -354,9 +355,6 @@ function add-master() {
 
     # check if the new master already exsited
     sed -n '/^\[kube_master/,/^\[kube_node/p' "$BASE/clusters/$1/hosts"|grep -E "^$2$|^$2 " && { logger error "master $2 already existed!"; return 2; }
-
-    # add '/usr/bin/python' soft link, needed in some OS (ubuntu 16.04+) 
-    ssh "$2" ln -s /usr/bin/python3 /usr/bin/python > /dev/null 2>&1 || echo ""
 
     logger info "add $2 into 'kube_master' group"
     MASTER_INFO="${@:2}"
@@ -378,9 +376,6 @@ function add-etcd() {
 
     # check if the new node already exsited
     sed -n '/^\[etcd/,/^\[kube_master/p' "$BASE/clusters/$1/hosts"|grep -E "^$2$|^$2 " && { logger error "etcd $2 already existed!"; return 2; }
-
-    # add '/usr/bin/python' soft link, needed in some OS (ubuntu 16.04+) 
-    ssh "$2" ln -s /usr/bin/python3 /usr/bin/python > /dev/null 2>&1 || echo ""
 
     logger info "add $2 into 'etcd' group"
     ETCD_INFO="${@:2}"
@@ -488,9 +483,9 @@ function renew-ca() {
 }
 
 
-EXPIRY=4800h        # default cert will expire in 200 days
-USER_TYPE=admin     # admin/view, admin=clusterrole:cluster-admin view=clusterrole:view 
-USER_NAME=user
+EXPIRY="4800h"        # default cert will expire in 200 days
+USER_TYPE="admin"     # admin/view, admin=clusterrole:cluster-admin view=clusterrole:view 
+USER_NAME="user"
 function kcfg-adm() {
     OPTIND=2
     ACTION=""

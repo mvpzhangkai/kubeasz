@@ -54,14 +54,15 @@ imageMinimumGCAge: 2m0s
 {% if KUBE_RESERVED_ENABLED == "yes" %}
 kubeReservedCgroup: /podruntime.slice
 kubeReserved:
-  cpu: 200m
-  memory: 400Mi
-  pid: 1000
+  cpu: 500m
+  memory: 1000Mi
+  pid: "1000"
 {% endif %}
 kubeAPIBurst: 100
 kubeAPIQPS: 50
 makeIPTablesUtilChains: true
 maxOpenFiles: 1000000
+maxParallelImagePulls: 5
 maxPods: {{ MAX_PODS }}
 nodeLeaseDurationSeconds: 40
 nodeStatusReportFrequency: 1m0s
@@ -73,15 +74,15 @@ port: 10250
 readOnlyPort: 0
 resolvConf: /etc/resolv.conf
 runtimeRequestTimeout: 2m0s
-serializeImagePulls: true
+serializeImagePulls: false
 streamingConnectionIdleTimeout: 4h0m0s
 syncFrequency: 1m0s
 {% if SYS_RESERVED_ENABLED == "yes" %}
 systemReservedCgroup: /system.slice
 systemReserved:
-  cpu: 200m
-  memory: 500Mi
-  pid: 5000
+  cpu: 500m
+  memory: 1000Mi
+  pid: "5000"
 {% endif %}
 tlsCertFile: {{ ca_dir }}/kubelet.pem
 tlsPrivateKeyFile: {{ ca_dir }}/kubelet-key.pem

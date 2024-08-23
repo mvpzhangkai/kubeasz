@@ -50,9 +50,6 @@
 ``` bash
 #$IP为所有节点地址包括自身，按照提示输入yes 和root密码
 ssh-copy-id $IP 
-
-# 为每个节点设置python软链接
-ssh $IP ln -s /usr/bin/python3 /usr/bin/python
 ```
 
 ### 4.在部署节点编排k8s安装
@@ -79,7 +76,10 @@ chmod +x ./ezdown
 【可选】下载额外容器镜像（cilium,flannel,prometheus等）
 
 ``` bash
-./ezdown -X
+# 按需下载
+./ezdown -X flannel
+./ezdown -X prometheus
+...
 ```
 
 【可选】下载离线系统包 (适用于无法使用yum/apt仓库情形)
